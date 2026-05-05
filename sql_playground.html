@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQLab</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f1f5f9;color:#212529;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.topbar{background:#1e293b;color:#fff;display:flex;align-items:center;padding:0 1rem;gap:.6rem;height:48px;flex-shrink:0}
+.topbar-title{font-weight:700;font-size:15px;white-space:nowrap}
+.sep{width:1px;height:18px;background:#334155;flex-shrink:0}
+.app{display:grid;grid-template-columns:230px 1fr;flex:1;overflow:hidden;min-height:0}
+.sidebar{background:#fff;border-right:1px solid #e2e8f0;overflow-y:auto;padding:.6rem;display:flex;flex-direction:column;gap:.4rem}
+.main{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+h3{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.3rem}
+.tbl-item{padding:5px 8px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:5px;color:#334155;user-select:none}
+.tbl-item:hover{background:#f1f5f9}
+.tbl-item.active{background:#eff6ff;color:#1d4ed8;font-weight:600}
+.btn{padding:5px 11px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:500;transition:background .15s;white-space:nowrap}
+.btn-primary{background:#1d4ed8;color:#fff}.btn-primary:hover{background:#1e40af}
+.btn-success{background:#16a34a;color:#fff}.btn-success:hover{background:#15803d}
+.btn-danger{background:#dc2626;color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-secondary{background:#f1f5f9;color:#334155;border:1px solid #e2e8f0}.btn-secondary:hover{background:#e2e8f0}
+.btn-info{background:#0891b2;color:#fff}.btn-info:hover{background:#0e7490}
+.btn-sm{padding:3px 8px;font-size:11px}
+label{font-size:12px;color:#64748b;margin-bottom:3px;display:block}
+input,select,textarea{font-family:inherit;width:100%;padding:5px 9px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;color:#212529;background:#fff}
+input:focus,select:focus,textarea:focus{outline:2px solid #3b82f6;outline-offset:1px}
+input:disabled{background:#f1f5f9;color:#94a3b8;cursor:not-allowed}
+textarea{resize:vertical;font-family:'Courier New',monospace}
+.tabs{display:flex;gap:2px;background:#f1f5f9;padding:3px;border-radius:8px;flex-wrap:wrap}
+.tab{padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;color:#64748b;border:none;background:none;white-space:nowrap}
+.tab.active{background:#fff;color:#1d4ed8;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.section{padding:.5rem .75rem;border-bottom:1px solid #e2e8f0;flex-shrink:0}
+.content-area{flex:1;overflow-y:auto;padding:.75rem;min-height:0}
+.result-table,.data-grid{width:100%;border-collapse:collapse;font-size:12px}
+.result-table th{background:#1e293b;color:#e2e8f0;padding:5px 9px;text-align:left;font-size:11px}
+.result-table td{padding:5px 9px;border-bottom:1px solid #e2e8f0}
+.result-table tr:hover td{background:#f8fafc}
+.data-grid th{background:#f8fafc;padding:5px 8px;border:1px solid #e2e8f0;font-size:11px;color:#64748b;font-weight:600;white-space:nowrap}
+.data-grid td{border:1px solid #e2e8f0}
+.data-grid td input{border:none;padding:4px 7px;width:100%;background:transparent;font-size:12px;min-width:60px}
+.data-grid td input:focus{background:#eff6ff;outline:none}
+.data-grid td input:disabled{background:#f8fafc;color:#64748b}
+.err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:7px 11px;border-radius:6px;font-size:12px;margin-top:.4rem}
+.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:7px 11px;border-radius:6px;font-size:12px;margin-top:.4rem}
+.sql-box{background:#f8fafc;border:1px solid #e2e8f0;border-left:3px solid #3b82f6;color:#334155;font-family:'Courier New',monospace;font-size:11px;padding:7px 11px;border-radius:6px;white-space:pre-wrap;word-break:break-all;margin-top:.4rem}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-start;justify-content:center;padding-top:30px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:10px;padding:1.25rem;width:520px;max-width:96vw;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);margin-bottom:30px}
+.modal h2{font-size:14px;font-weight:600;margin-bottom:.75rem;color:#1e293b}
+.modal-footer{display:flex;gap:6px;justify-content:flex-end;margin-top:.75rem;padding-top:.75rem;border-top:1px solid #f1f5f9}
+.badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700}
+.badge-blue{background:#dbeafe;color:#1e40af}
+.badge-green{background:#dcfce7;color:#166534}
+.badge-amber{background:#fef3c7;color:#92400e}
+.pk-banner{background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:6px 10px;font-size:12px;color:#92400e;margin-bottom:8px}
+.fk-row{display:flex;align-items:center;gap:6px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:5px 8px;margin-bottom:5px;font-size:12px;color:#0c4a6e}
+.col-row{display:grid;grid-template-columns:1fr 130px 70px 28px;gap:4px;align-items:center;margin-bottom:5px}
+.footer-bar{background:#1e293b;color:#475569;font-size:10px;padding:3px 1rem;text-align:right;flex-shrink:0}
+.footer-bar span{color:#7dd3fc;font-weight:500}
+/* editor SQL */
+.editor-wrap{position:relative;margin-bottom:8px}
+#sqlHL{position:absolute;inset:0;padding:5px 9px;font-family:'Courier New',monospace;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word;pointer-events:none;border:1px solid transparent;border-radius:6px;overflow:hidden;color:transparent;background:#fff;border-color:#e2e8f0;z-index:0}
+#sqlTA{background:transparent!important;color:#1e293b;position:relative;z-index:1;caret-color:#1e293b;line-height:1.5}
+#sqlTA::placeholder{color:#94a3b8}
+.sk-kw{color:#7c3aed;font-weight:700}.sk-fn{color:#059669}.sk-tp{color:#d97706}.sk-nu{color:#0891b2}.sk-st{color:#16a34a}
+canvas{display:block;width:100%;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0}
+optgroup{font-weight:700;font-style:normal}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span style="font-size:24px;background:linear-gradient(135deg,#38bdf8,#818cf8,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:900;line-height:1">∞</span>
+  <span class="topbar-title">SQL<span style="color:#38bdf8">ab</span></span>
+  <div class="sep"></div>
+  <span style="font-size:11px;color:#94a3b8">Ambiente didattico</span>
+  <div style="margin-left:auto;display:flex;gap:5px">
+    <button class="btn btn-secondary btn-sm" onclick="exportDB()">Esporta</button>
+    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()">Importa</button>
+    <input type="file" id="importFile" accept=".json" style="display:none;width:auto" onchange="importDB(event)">
+    <button class="btn btn-danger btn-sm" onclick="resetAll()">🔄 Reset</button>
+  </div>
+</div>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div>
+      <div style="display:flex;align-items:center;margin-bottom:4px">
+        <h3 style="margin:0;flex:1">Tabelle</h3>
+        <button class="btn btn-primary btn-sm" onclick="openCreateModal()">+ Nuova</button>
+      </div>
+      <div id="tblList"></div>
+    </div>
+    <div id="tblActions" style="display:none;border-top:1px solid #f1f5f9;padding-top:.5rem">
+      <h3 id="tblActName" style="color:#1d4ed8;margin-bottom:.4rem;font-size:12px;text-transform:none;letter-spacing:0"></h3>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="btn btn-success btn-sm" id="btnInsert">+ Riga</button>
+        <button class="btn btn-secondary btn-sm" id="btnAddCol">+ Colonna</button>
+        <button class="btn btn-info btn-sm" id="btnFK">🔗 FK</button>
+        <button class="btn btn-danger btn-sm" id="btnDrop">🗑 Elimina</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="section">
+      <div class="tabs">
+        <button class="tab active" id="tab-btn-data" onclick="switchTab('data')">📋 Dati</button>
+        <button class="tab" id="tab-btn-sql" onclick="switchTab('sql')">💻 Editor SQL</button>
+        <button class="tab" id="tab-btn-erd" onclick="switchTab('erd')">🔗 Modello Logico</button>
+        <button class="tab" id="tab-btn-struct" onclick="switchTab('struct')">🏗️ Struttura</button>
+      </div>
+    </div>
+
+    <div id="tab-data" class="content-area">
+      <div id="noTable" style="color:#94a3b8;font-size:13px;text-align:center;padding:2rem">Seleziona o crea una tabella</div>
+      <div id="dataArea" style="display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span id="dataBadge" class="badge badge-blue" style="font-size:12px;padding:3px 10px"></span>
+          <span id="dataCount" style="font-size:11px;color:#64748b"></span>
+        </div>
+        <div style="overflow-x:auto"><table class="data-grid" id="dataGrid"></table></div>
+      </div>
+    </div>
+
+    <div id="tab-sql" class="content-area" style="display:none">
+      <label>Query SQL:</label>
+      <div class="editor-wrap">
+        <div id="sqlHL"></div>
+        <textarea id="sqlTA" rows="5" spellcheck="false"
+          placeholder="SELECT * FROM tabella&#10;INSERT INTO tabella (col1) VALUES ('val')&#10;UPDATE tabella SET col='val' WHERE id=1&#10;DELETE FROM tabella WHERE id=1"
+          oninput="hlSync()" onscroll="document.getElementById('sqlHL').scrollTop=this.scrollTop"
+          onkeydown="if(event.key==='Tab'){event.preventDefault();var s=this.selectionStart;this.value=this.value.substring(0,s)+'  '+this.value.substring(this.selectionEnd);this.selectionStart=this.selectionEnd=s+2;hlSync()}"></textarea>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="runSQL()">▶ Esegui</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('sqlTA').value='';document.getElementById('queryResult').innerHTML='';hlSync()">Pulisci</button>
+        <select id="sqlExamples" onchange="loadExample()" style="flex:1;min-width:130px;font-size:12px"><option value="">Esempi rapidi...</option></select>
+      </div>
+      <div id="queryResult"></div>
+      <div style="margin-top:1rem">
+        <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Schema tabelle</div>
+        <div id="schemaBox" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px;font-family:'Courier New',monospace;font-size:12px;line-height:1.9"></div>
+      </div>
+    </div>
+
+    <div id="tab-erd" class="content-area" style="display:none">
+      <div style="display:flex;align-items:center;margin-bottom:8px">
+        <span style="font-size:12px;color:#64748b">Modello logico con relazioni</span>
+        <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="drawERD()">↻ Aggiorna</button>
+      </div>
+      <canvas id="erdCanvas"></canvas>
+    </div>
+
+    <div id="tab-struct" class="content-area" style="display:none">
+      <div id="structArea"></div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-bar">Creato dal <span>Prof. Gaetano Ferrarelli</span> — <span style="background:linear-gradient(135deg,#38bdf8,#818cf8,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700">∞</span> SQL<span style="color:#38bdf8">ab</span> &copy; 2025</div>
+
+<!-- MODAL: CREA TABELLA -->
+<div class="modal-overlay" id="modalCreate">
+  <div class="modal">
+    <h2>➕ Nuova tabella</h2>
+    <div style="margin-bottom:8px">
+      <label>Nome tabella</label>
+      <input type="text" id="crtName" placeholder="es. studenti">
+    </div>
+    <div class="pk-banner">
+      🔑 Chiave primaria — <strong>Nome:</strong>
+      <input type="text" id="crtPK" value="id" style="width:80px;display:inline-block;padding:2px 6px;font-size:12px;margin-left:4px">
+      &nbsp;· INTEGER · PK · AUTO INCREMENT
+    </div>
+    <div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px">Colonne</div>
+    <div class="col-row" style="margin-bottom:3px">
+      <span style="font-size:10px;color:#94a3b8;font-weight:700">NOME</span>
+      <span style="font-size:10px;color:#94a3b8;font-weight:700">TIPO</span>
+      <span style="font-size:10px;color:#94a3b8;font-weight:700;text-align:center">OBBL.</span>
+      <span></span>
+    </div>
+    <div id="crtCols"></div>
+    <button class="btn btn-secondary btn-sm" style="margin-top:4px" onclick="crtAddRow()">+ Colonna</button>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalCreate')">Annulla</button>
+      <button class="btn btn-primary" onclick="doCreateTable()">Crea tabella</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: INSERISCI RIGA -->
+<div class="modal-overlay" id="modalInsert">
+  <div class="modal">
+    <h2 id="insTitle">Inserisci riga</h2>
+    <div class="pk-banner">🔑 Il campo <strong id="insPKName"></strong> viene assegnato automaticamente</div>
+    <div id="insFields"></div>
+    <div style="margin-top:8px">
+      <div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:3px">Query SQL generata</div>
+      <div class="sql-box" id="insSQL"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalInsert')">Annulla</button>
+      <button class="btn btn-success" onclick="doInsert()">✔ Inserisci</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: AGGIUNGI COLONNA -->
+<div class="modal-overlay" id="modalAddCol">
+  <div class="modal">
+    <h2 id="addColTitle">Aggiungi colonna</h2>
+    <div style="margin-bottom:8px"><label>Nome colonna</label><input type="text" id="acName" placeholder="es. email"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <div style="flex:1"><label>Tipo MySQL</label><select id="acType"></select></div>
+      <div style="flex:1"><label>Default</label><input type="text" id="acDef" placeholder="es. 0"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+      <input type="checkbox" id="acNN" style="width:14px;height:14px;accent-color:#1d4ed8">
+      <label for="acNN" style="margin:0;cursor:pointer">Campo obbligatorio (NOT NULL)</label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalAddCol')">Annulla</button>
+      <button class="btn btn-primary" onclick="doAddCol()">Aggiungi</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: FK -->
+<div class="modal-overlay" id="modalFK">
+  <div class="modal">
+    <h2 id="fkTitle">🔗 Chiavi esterne</h2>
+    <div style="margin-bottom:10px">
+      <h3 style="color:#0891b2;margin-bottom:5px">FK esistenti</h3>
+      <div id="fkExisting"></div>
+    </div>
+    <div style="border-top:1px solid #f1f5f9;padding-top:10px">
+      <h3 style="margin-bottom:6px">Aggiungi nuova FK</h3>
+      <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;margin-bottom:6px">
+        <div style="flex:1;min-width:90px"><label>Colonna locale</label><select id="fkLocal" onchange="fkPreview()"></select></div>
+        <div style="font-size:18px;color:#94a3b8;padding-bottom:4px">→</div>
+        <div style="flex:1;min-width:90px"><label>Tabella</label><select id="fkToTable" onchange="fkUpdateCols()"></select></div>
+        <div style="flex:1;min-width:90px"><label>Colonna PK</label><select id="fkToCol" onchange="fkPreview()"></select></div>
+      </div>
+      <div class="sql-box" id="fkPreviewBox" style="margin-bottom:6px"></div>
+      <button class="btn btn-info" onclick="doAddFK()">✔ Aggiungi FK</button>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modalFK')">Chiudi</button></div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   STATO
+═══════════════════════════════════════ */
+let DB = null;
+let state = { tables: {}, fks: [] };
+let currentTable = null;
+const STORE_KEY = 'sqlpg_v6';
+const INTERNAL = ['sqlite_sequence','sqlite_master','sqlite_stat1','sqlite_stat2','sqlite_stat3','sqlite_stat4'];
+
+/* ════════════════════════════════════════
+   TIPI MYSQL
+═══════════════════════════════════════ */
+const MYSQL_TYPES = [
+  { g: 'Numerici interi',    t: ['TINYINT','SMALLINT','MEDIUMINT','INT','INTEGER','BIGINT','BIT','BOOLEAN'] },
+  { g: 'Numerici decimali',  t: ['DECIMAL','NUMERIC','FLOAT','DOUBLE','REAL'] },
+  { g: 'Testo',              t: ['CHAR','VARCHAR','TINYTEXT','TEXT','MEDIUMTEXT','LONGTEXT'] },
+  { g: 'Binari',             t: ['BINARY','VARBINARY','TINYBLOB','BLOB','MEDIUMBLOB','LONGBLOB'] },
+  { g: 'Data e ora',         t: ['DATE','TIME','DATETIME','TIMESTAMP','YEAR'] },
+  { g: 'Altri',              t: ['ENUM','SET','JSON','GEOMETRY'] }
+];
+
+function fillTypeSelect(sel, defaultVal) {
+  sel.innerHTML = '';
+  MYSQL_TYPES.forEach(g => {
+    const og = document.createElement('optgroup');
+    og.label = g.g;
+    g.t.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t; o.textContent = t;
+      if (t === (defaultVal || 'TEXT')) o.selected = true;
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  });
+}
+
+function inputTypeFor(t) {
+  t = (t || '').toUpperCase();
+  if (t === 'DATE') return 'date';
+  if (t === 'TIME') return 'time';
+  if (t === 'DATETIME' || t === 'TIMESTAMP') return 'datetime-local';
+  if (['TINYINT','SMALLINT','MEDIUMINT','INT','INTEGER','BIGINT','BIT','BOOLEAN','DECIMAL','NUMERIC','FLOAT','DOUBLE','REAL','YEAR'].includes(t)) return 'number';
+  return 'text';
+}
+
+/* ════════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}` }).then(SQL => {
+  DB = new SQL.Database();
+  fillTypeSelect(document.getElementById('acType'));
+  const saved = localStorage.getItem(STORE_KEY);
+  if (saved) try { loadState(JSON.parse(saved)); } catch(e) { console.warn('Load failed', e); }
+  refreshSidebar();
+  updateExamples();
+});
+
+/* ════════════════════════════════════════
+   PERSIST
+═══════════════════════════════════════ */
+function saveState() {
+  try {
+    const exp = { tables: {}, fks: state.fks };
+    Object.keys(state.tables).forEach(t => {
+      const r = DB.exec(`SELECT * FROM "${t}"`);
+      exp.tables[t] = { cols: state.tables[t], rows: r.length ? r[0].values : [] };
+    });
+    localStorage.setItem(STORE_KEY, JSON.stringify(exp));
+  } catch(e) {}
+}
+
+function loadState(data) {
+  if (data.fks) state.fks = data.fks;
+  Object.keys(data.tables || {}).forEach(t => {
+    const { cols, rows } = data.tables[t];
+    try {
+      DB.run(`CREATE TABLE IF NOT EXISTS "${t}" (${buildColDefs(cols)})`);
+      rows.forEach(r => {
+        try { DB.run(`INSERT OR IGNORE INTO "${t}" VALUES (${r.map(() => '?').join(',')})`, r); } catch(e) {}
+      });
+      state.tables[t] = cols;
+    } catch(e) { console.warn('Load table failed', t, e); }
+  });
+}
+
+function buildColDefs(cols) {
+  return cols.map((c, i) => {
+    if (i === 0) return `"${c.name}" INTEGER PRIMARY KEY AUTOINCREMENT`;
+    let d = `"${c.name}" ${c.type}`;
+    if (c.nn) d += ' NOT NULL';
+    if (c.def && c.def.trim()) d += ` DEFAULT ${c.def}`;
+    return d;
+  }).join(', ');
+}
+
+/* ════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════ */
+function refreshSidebar() {
+  const div = document.getElementById('tblList');
+  div.innerHTML = '';
+  Object.keys(state.tables).forEach(t => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;align-items:center;gap:2px;margin-bottom:2px';
+
+    const el = document.createElement('div');
+    el.className = 'tbl-item' + (t === currentTable ? ' active' : '');
+    el.style.flex = '1';
+    el.innerHTML = `<span>📋</span><span>${t}</span>`;
+    el.onclick = () => selectTable(t);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn btn-danger btn-sm';
+    delBtn.style.cssText = 'padding:2px 6px;font-size:11px;flex-shrink:0';
+    delBtn.textContent = '🗑';
+    delBtn.title = `Elimina ${t}`;
+    delBtn.onclick = (e) => {
+      e.stopPropagation();
+
+      // elimina righe nelle tabelle figlie (cascade manuale)
+      state.fks.filter(f => f.toTable === t).forEach(fk => {
+        try { DB.run(`DELETE FROM "${fk.fromTable}" WHERE "${fk.fromCol}" IN (SELECT "${fk.toCol}" FROM "${t}")`); } catch(e) {}
+      });
+      try { DB.run(`DROP TABLE IF EXISTS "${t}"`); } catch(err) { alert('Errore: ' + err.message); return; }
+      state.fks = state.fks.filter(f => f.fromTable !== t && f.toTable !== t);
+      delete state.tables[t];
+      if (currentTable === t) {
+        currentTable = null;
+        document.getElementById('tblActions').style.display = 'none';
+        document.getElementById('dataArea').style.display = 'none';
+        document.getElementById('noTable').style.display = 'block';
+      }
+      saveState();
+      refreshSidebar();
+    };
+
+    wrap.appendChild(el);
+    wrap.appendChild(delBtn);
+    div.appendChild(wrap);
+  });
+  updateExamples();
+}
+
+function selectTable(name) {
+  currentTable = name;
+  refreshSidebar();
+  document.getElementById('tblActions').style.display = 'block';
+  document.getElementById('tblActName').textContent = name;
+
+  const tblName = name;
+  document.getElementById('btnInsert').onclick  = () => openInsertModal();
+  document.getElementById('btnAddCol').onclick  = () => openAddColModal();
+  document.getElementById('btnFK').onclick      = () => openFKModal();
+  document.getElementById('btnDrop').onclick = null;
+  document.getElementById('btnDrop').addEventListener('click', function dropHandler() {
+    const tbl = currentTable;
+    if (!tbl) { alert('Nessuna tabella selezionata'); return; }
+    if (!confirm(`Eliminare la tabella "${tbl}" con tutti i dati?`)) return;
+    try {
+      DB.run(`DROP TABLE IF EXISTS "${tbl}"`);
+    } catch(e) { alert('Errore SQL: ' + e.message); return; }
+    state.fks = state.fks.filter(f => f.fromTable !== tbl && f.toTable !== tbl);
+    delete state.tables[tbl];
+    currentTable = null;
+    saveState();
+    document.getElementById('tblActions').style.display = 'none';
+    document.getElementById('dataArea').style.display = 'none';
+    document.getElementById('noTable').style.display = 'block';
+    document.getElementById('btnDrop').removeEventListener('click', dropHandler);
+    refreshSidebar();
+  });
+
+  renderGrid();
+}
+
+/* ════════════════════════════════════════
+   DATA GRID
+═══════════════════════════════════════ */
+function renderGrid() {
+  if (!currentTable || !state.tables[currentTable]) return;
+  document.getElementById('noTable').style.display = 'none';
+  document.getElementById('dataArea').style.display = 'block';
+  document.getElementById('dataBadge').textContent = currentTable;
+
+  const cols = state.tables[currentTable];
+  let res;
+  try { res = DB.exec(`SELECT * FROM "${currentTable}"`); } catch(e) { return; }
+  const rows = res.length ? res[0].values : [];
+  document.getElementById('dataCount').textContent = `${rows.length} riga/e`;
+
+  const tbl = document.getElementById('dataGrid');
+  tbl.innerHTML = '';
+
+  // header
+  const hr = tbl.createTHead().insertRow();
+  cols.forEach((c, i) => {
+    const th = document.createElement('th');
+    const fk = state.fks.find(f => f.fromTable === currentTable && f.fromCol === c.name);
+    th.innerHTML = `${i === 0 ? '🔑 ' : ''}${c.name}${i === 0 ? ' <span style="color:#d97706;font-size:9px">AI</span>' : ''}${fk ? ` <span style="color:#0891b2;font-size:9px">→${fk.toTable}</span>` : ''}<br><span style="font-weight:400;font-size:9px;color:#94a3b8">${c.type}</span>`;
+    hr.appendChild(th);
+  });
+  const thAct = document.createElement('th'); thAct.textContent = ''; hr.appendChild(thAct);
+
+  // body
+  const tb = tbl.createTBody();
+  rows.forEach(row => {
+    const tr = tb.insertRow();
+    row.forEach((val, ci) => {
+      const td = tr.insertCell();
+      const inp = document.createElement('input');
+      inp.value = val ?? '';
+      if (ci === 0) {
+        inp.disabled = true;
+        inp.title = 'Chiave primaria — gestita automaticamente';
+      } else {
+        inp.type = inputTypeFor(cols[ci] ? cols[ci].type : 'TEXT');
+        inp.onblur = () => {
+          try {
+            DB.run(`UPDATE "${currentTable}" SET "${cols[ci].name}"=? WHERE "${cols[0].name}"=?`, [inp.value, row[0]]);
+            saveState();
+          } catch(e) { alert('Errore aggiornamento: ' + e.message); renderGrid(); }
+        };
+      }
+      td.appendChild(inp);
+    });
+    const tdDel = tr.insertCell();
+    const btn = document.createElement('button');
+    btn.textContent = '✕'; btn.className = 'btn btn-danger btn-sm';
+    btn.onclick = () => {
+      if (!confirm('Eliminare questa riga?')) return;
+      try {
+        DB.run(`DELETE FROM "${currentTable}" WHERE "${cols[0].name}"=?`, [row[0]]);
+        saveState(); renderGrid();
+      } catch(e) { alert('Errore: ' + e.message); }
+    };
+    tdDel.appendChild(btn);
+  });
+}
+
+/* ════════════════════════════════════════
+   CREA TABELLA
+═══════════════════════════════════════ */
+function openCreateModal() {
+  document.getElementById('crtName').value = '';
+  document.getElementById('crtPK').value = 'id';
+  document.getElementById('crtCols').innerHTML = '';
+  openModal('modalCreate');
+}
+
+function crtAddRow() {
+  const container = document.getElementById('crtCols');
+  const row = document.createElement('div');
+  row.className = 'col-row';
+
+  const nameI = document.createElement('input');
+  nameI.type = 'text'; nameI.placeholder = 'nome_colonna';
+
+  const sel = document.createElement('select');
+  fillTypeSelect(sel);
+
+  const chkWrap = document.createElement('div');
+  chkWrap.style.cssText = 'display:flex;align-items:center;justify-content:center';
+  const chk = document.createElement('input');
+  chk.type = 'checkbox'; chk.checked = true;
+  chk.style.cssText = 'width:14px;height:14px;accent-color:#1d4ed8';
+  chkWrap.appendChild(chk);
+
+  const del = document.createElement('button');
+  del.type = 'button'; del.textContent = '✕';
+  del.className = 'btn btn-danger btn-sm'; del.style.padding = '2px 6px';
+  del.onclick = () => row.remove();
+
+  row.appendChild(nameI); row.appendChild(sel); row.appendChild(chkWrap); row.appendChild(del);
+  container.appendChild(row);
+}
+
+function doCreateTable() {
+  const rawName = document.getElementById('crtName').value.trim();
+  const pkName  = document.getElementById('crtPK').value.trim() || 'id';
+
+  if (!rawName) return alert('Inserisci un nome per la tabella');
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(rawName)) return alert('Nome non valido: usa lettere, numeri e underscore (deve iniziare con una lettera)');
+  if (state.tables[rawName]) return alert('Esiste già una tabella con questo nome');
+
+  const cols = [{ name: pkName, type: 'INTEGER', nn: true, def: '', pk: true }];
+
+  document.getElementById('crtCols').querySelectorAll('.col-row').forEach(row => {
+    const nameEl = row.querySelector('input[type=text]');
+    const selEl  = row.querySelector('select');
+    const chkEl  = row.querySelector('input[type=checkbox]');
+    const n = nameEl ? nameEl.value.trim() : '';
+    if (!n) return;
+    cols.push({ name: n, type: selEl ? selEl.value : 'TEXT', nn: chkEl ? chkEl.checked : false, def: '', pk: false });
+  });
+
+  try {
+    DB.run(`CREATE TABLE "${rawName}" (${buildColDefs(cols)})`);
+    state.tables[rawName] = cols;
+    saveState();
+    refreshSidebar();
+    selectTable(rawName);
+    closeModal('modalCreate');
+  } catch(e) { alert('Errore SQL: ' + e.message); }
+}
+
+/* ════════════════════════════════════════
+   ELIMINA TABELLA
+═══════════════════════════════════════ */
+function doDropTable() {
+  const toDrop = currentTable;
+  if (!toDrop) return alert('Nessuna tabella selezionata');
+  if (!confirm(`Eliminare la tabella "${toDrop}" con tutti i dati?`)) return;
+  try { DB.run(`DROP TABLE IF EXISTS "${toDrop}"`); } catch(e) { alert('Errore SQL: ' + e.message); return; }
+  state.fks = state.fks.filter(f => f.fromTable !== toDrop && f.toTable !== toDrop);
+  delete state.tables[toDrop];
+  currentTable = null;
+  saveState();
+  refreshSidebar();
+  document.getElementById('tblActions').style.display = 'none';
+  document.getElementById('dataArea').style.display = 'none';
+  document.getElementById('noTable').style.display = 'block';
+}
+
+/* ════════════════════════════════════════
+   AGGIUNGI COLONNA
+═══════════════════════════════════════ */
+function openAddColModal() {
+  if (!currentTable) return;
+  document.getElementById('addColTitle').textContent = `Aggiungi colonna a "${currentTable}"`;
+  document.getElementById('acName').value = '';
+  fillTypeSelect(document.getElementById('acType'));
+  document.getElementById('acDef').value = '';
+  document.getElementById('acNN').checked = false;
+  openModal('modalAddCol');
+}
+
+function doAddCol() {
+  const name = document.getElementById('acName').value.trim();
+  if (!name) return alert('Inserisci un nome per la colonna');
+  const type = document.getElementById('acType').value;
+  const def  = document.getElementById('acDef').value.trim();
+  const nn   = document.getElementById('acNN').checked;
+  let sql = `ALTER TABLE "${currentTable}" ADD COLUMN "${name}" ${type}`;
+  if (def) sql += ` DEFAULT ${def}`;
+  try {
+    DB.run(sql);
+    state.tables[currentTable].push({ name, type, nn, def });
+    saveState(); renderGrid(); closeModal('modalAddCol');
+  } catch(e) { alert('Errore: ' + e.message); }
+}
+
+/* ════════════════════════════════════════
+   INSERISCI RIGA
+═══════════════════════════════════════ */
+function openInsertModal() {
+  if (!currentTable) return;
+  const cols = state.tables[currentTable];
+  if (!cols || !cols.length) return alert('Tabella senza colonne');
+
+  document.getElementById('insTitle').textContent = `Inserisci riga in "${currentTable}"`;
+  document.getElementById('insPKName').textContent = cols[0].name;
+
+  const div = document.getElementById('insFields');
+  div.innerHTML = '';
+
+  cols.slice(1).forEach(c => {
+    const wrap = document.createElement('div');
+    wrap.style.marginBottom = '8px';
+
+    const fk = state.fks.find(f => f.fromTable === currentTable && f.fromCol === c.name);
+    const lbl = document.createElement('label');
+    lbl.innerHTML = `${c.name} <span style="color:#94a3b8">(${c.type})</span>${c.nn ? '<span style="color:#dc2626;margin-left:2px">*</span>' : ''}${fk ? `<span style="color:#0891b2;font-size:10px;margin-left:5px">FK → ${fk.toTable}.${fk.toCol}</span>` : ''}`;
+
+    let inp;
+    if (fk) {
+      inp = document.createElement('select');
+      const o0 = document.createElement('option'); o0.value = ''; o0.textContent = '-- seleziona --'; inp.appendChild(o0);
+      try {
+        const r = DB.exec(`SELECT "${fk.toCol}" FROM "${fk.toTable}"`);
+        if (r.length) r[0].values.forEach(v => { const o = document.createElement('option'); o.value = v[0]; o.textContent = v[0]; inp.appendChild(o); });
+      } catch(e) {}
+    } else {
+      inp = document.createElement('input');
+      inp.type = inputTypeFor(c.type);
+      inp.placeholder = c.def ? `default: ${c.def}` : c.type;
+    }
+    inp.id = `ins_${c.name}`;
+    inp.oninput = inp.onchange = updateInsSQL;
+
+    wrap.appendChild(lbl); wrap.appendChild(inp); div.appendChild(wrap);
+  });
+
+  updateInsSQL();
+  openModal('modalInsert');
+}
+
+function updateInsSQL() {
+  const cols = state.tables[currentTable].slice(1);
+  const names = cols.map(c => `"${c.name}"`).join(', ');
+  const vals = cols.map(c => {
+    const el = document.getElementById(`ins_${c.name}`);
+    const v = el ? el.value.trim() : '';
+    if (v === '') return 'NULL';
+    const isNum = ['TINYINT','SMALLINT','MEDIUMINT','INT','INTEGER','BIGINT','BIT','BOOLEAN','DECIMAL','NUMERIC','FLOAT','DOUBLE','REAL','YEAR'].includes((c.type||'').toUpperCase());
+    return (isNum && !isNaN(v)) ? v : `'${v}'`;
+  }).join(', ');
+  document.getElementById('insSQL').textContent = `INSERT INTO "${currentTable}" (${names})\nVALUES (${vals});`;
+}
+
+function doInsert() {
+  const cols = state.tables[currentTable].slice(1);
+  const vals = cols.map(c => { const el = document.getElementById(`ins_${c.name}`); return el && el.value.trim() !== '' ? el.value.trim() : null; });
+  const names = cols.map(c => `"${c.name}"`).join(',');
+  const ph = vals.map(() => '?').join(',');
+  try {
+    DB.run(`INSERT INTO "${currentTable}" (${names}) VALUES (${ph})`, vals);
+    saveState(); renderGrid(); closeModal('modalInsert');
+  } catch(e) { alert('Errore: ' + e.message); }
+}
+
+/* ════════════════════════════════════════
+   FK MANAGER
+═══════════════════════════════════════ */
+function openFKModal() {
+  if (!currentTable) return;
+  const others = Object.keys(state.tables).filter(t => t !== currentTable);
+  if (!others.length) return alert('Crea almeno un\'altra tabella prima');
+
+  document.getElementById('fkTitle').textContent = `🔗 Chiavi esterne — ${currentTable}`;
+
+  // FK esistenti
+  const div = document.getElementById('fkExisting');
+  div.innerHTML = '';
+  const mine = state.fks.filter(f => f.fromTable === currentTable);
+  if (!mine.length) {
+    div.innerHTML = '<span style="font-size:12px;color:#94a3b8">Nessuna FK definita.</span>';
+  } else {
+    mine.forEach(fk => {
+      const row = document.createElement('div'); row.className = 'fk-row';
+      row.innerHTML = `<span style="flex:1"><strong>${fk.fromCol}</strong> → <strong>${fk.toTable}</strong>.<strong>${fk.toCol}</strong></span>`;
+      const btn = document.createElement('button'); btn.textContent = '✕ Rimuovi'; btn.className = 'btn btn-danger btn-sm';
+      btn.onclick = () => {
+        if (!confirm('Rimuovere questa FK?')) return;
+        state.fks = state.fks.filter(f => !(f.fromTable === fk.fromTable && f.fromCol === fk.fromCol));
+        saveState(); openFKModal(); renderGrid();
+      };
+      row.appendChild(btn); div.appendChild(row);
+    });
+  }
+
+  // select locale
+  const lc = document.getElementById('fkLocal'); lc.innerHTML = '';
+  state.tables[currentTable].slice(1).forEach(c => { const o = document.createElement('option'); o.value = c.name; o.textContent = `${c.name} (${c.type})`; lc.appendChild(o); });
+
+  // select tabella
+  const rt = document.getElementById('fkToTable'); rt.innerHTML = '';
+  others.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; rt.appendChild(o); });
+
+  fkUpdateCols();
+  openModal('modalFK');
+}
+
+function fkUpdateCols() {
+  const t = document.getElementById('fkToTable').value;
+  const rc = document.getElementById('fkToCol'); rc.innerHTML = '';
+  if (state.tables[t]) { const pk = state.tables[t][0]; const o = document.createElement('option'); o.value = pk.name; o.textContent = `${pk.name} (PK)`; rc.appendChild(o); }
+  fkPreview();
+}
+
+function fkPreview() {
+  const lc = document.getElementById('fkLocal').value;
+  const rt = document.getElementById('fkToTable').value;
+  const rc = document.getElementById('fkToCol').value;
+  document.getElementById('fkPreviewBox').textContent = `${currentTable}.${lc}  →  ${rt}.${rc}  (N : 1)`;
+}
+
+function doAddFK() {
+  const lc = document.getElementById('fkLocal').value;
+  const rt = document.getElementById('fkToTable').value;
+  const rc = document.getElementById('fkToCol').value;
+  if (!lc || !rt || !rc) return;
+  state.fks = state.fks.filter(f => !(f.fromTable === currentTable && f.fromCol === lc));
+  state.fks.push({ fromTable: currentTable, fromCol: lc, toTable: rt, toCol: rc });
+  saveState(); openFKModal(); renderGrid();
+}
+
+/* ════════════════════════════════════════
+   SQL EDITOR
+═══════════════════════════════════════ */
+const HL_KW = /\b(SELECT|FROM|WHERE|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|DROP|ALTER|ADD|COLUMN|PRIMARY|KEY|FOREIGN|REFERENCES|NOT|NULL|DEFAULT|UNIQUE|INDEX|JOIN|LEFT|RIGHT|INNER|OUTER|FULL|CROSS|ON|AS|AND|OR|IN|IS|LIKE|BETWEEN|ORDER|BY|GROUP|HAVING|LIMIT|OFFSET|DISTINCT|ALL|UNION|EXCEPT|INTERSECT|EXISTS|CASE|WHEN|THEN|ELSE|END|IF|BEGIN|COMMIT|ROLLBACK|AUTOINCREMENT|AUTO_INCREMENT|CASCADE|RESTRICT|ASC|DESC|CONSTRAINT|CHECK)\b/gi;
+const HL_FN = /\b(COUNT|SUM|AVG|MIN|MAX|COALESCE|IFNULL|NULLIF|CAST|TYPEOF|LENGTH|SUBSTR|UPPER|LOWER|TRIM|REPLACE|ROUND|ABS|DATE|DATETIME|STRFTIME|NOW|CURRENT_DATE|CURRENT_TIMESTAMP|RANDOM|LAST_INSERT_ROWID)\s*(?=\()/gi;
+const HL_TP = /\b(TINYINT|SMALLINT|MEDIUMINT|INT|INTEGER|BIGINT|BIT|BOOLEAN|DECIMAL|NUMERIC|FLOAT|DOUBLE|REAL|CHAR|VARCHAR|TINYTEXT|TEXT|MEDIUMTEXT|LONGTEXT|BINARY|VARBINARY|BLOB|TINYBLOB|MEDIUMBLOB|LONGBLOB|DATE|TIME|DATETIME|TIMESTAMP|YEAR|ENUM|SET|JSON|GEOMETRY)\b/gi;
+const HL_ST = /'[^']*'/g;
+const HL_NU = /\b\d+(\.\d+)?\b/g;
+
+function hlSync() {
+  const v = document.getElementById('sqlTA').value;
+  document.getElementById('sqlHL').innerHTML = v
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(HL_ST, m => `<span class="sk-st">${m}</span>`)
+    .replace(HL_FN, m => `<span class="sk-fn">${m}</span>`)
+    .replace(HL_TP, m => `<span class="sk-tp">${m}</span>`)
+    .replace(HL_KW, m => `<span class="sk-kw">${m.toUpperCase()}</span>`)
+    .replace(HL_NU, m => `<span class="sk-nu">${m}</span>`)
+    + '\n';
+}
+
+function runSQL() {
+  const sql = document.getElementById('sqlTA').value.trim();
+  if (!sql) return;
+  const div = document.getElementById('queryResult');
+  try {
+    const res = DB.exec(sql);
+    syncTablesFromDB(); saveState();
+    if (currentTable) renderGrid();
+    renderSchema();
+
+    if (res.length) {
+      const { columns, values } = res[0];
+      let html = `<div class="ok">✓ ${values.length} riga/e restituite</div><div style="overflow-x:auto;margin-top:6px"><table class="result-table"><thead><tr>${columns.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>`;
+      values.forEach(r => { html += `<tr>${r.map(v => `<td>${v != null ? v : '<em style="color:#94a3b8">NULL</em>'}</td>`).join('')}</tr>`; });
+      html += '</tbody></table></div>';
+      div.innerHTML = html;
+    } else {
+      div.innerHTML = '<div class="ok">✓ Query eseguita correttamente</div>';
+    }
+  } catch(e) {
+    div.innerHTML = `<div class="err">✗ ${e.message}</div>`;
+  }
+}
+
+function syncTablesFromDB() {
+  try {
+    const res = DB.exec("SELECT name FROM sqlite_master WHERE type='table'");
+    const names = res.length ? res[0].values.map(r => r[0]).filter(n => !INTERNAL.includes(n)) : [];
+    names.forEach(t => {
+      if (!state.tables[t]) {
+        const ci = DB.exec(`PRAGMA table_info("${t}")`);
+        if (ci.length) state.tables[t] = ci[0].values.map(r => ({ name: r[1], type: r[2], nn: !!r[3], def: r[4] || '' }));
+      }
+    });
+    Object.keys(state.tables).forEach(t => { if (!names.includes(t)) delete state.tables[t]; });
+    refreshSidebar();
+  } catch(e) {}
+}
+
+function renderSchema() {
+  const box = document.getElementById('schemaBox');
+  const tables = Object.keys(state.tables);
+  if (!tables.length) { box.textContent = '-- Nessuna tabella'; return; }
+  box.innerHTML = tables.map(t => {
+    const cols = state.tables[t];
+    const lines = cols.map((c, i) => {
+      const fk = state.fks.find(f => f.fromTable === t && f.fromCol === c.name);
+      const ai = i === 0 ? ' 🔑 PK · AI' : '';
+      const nn = i > 0 && c.nn ? ' NOT NULL' : '';
+      const fkTxt = fk ? ` 🔗 FK→${fk.toTable}(${fk.toCol})` : '';
+      return `  <span style="color:#1d4ed8;font-weight:600">${c.name}</span> <span style="color:#d97706">${c.type}</span><span style="color:#64748b">${ai}${nn}${fkTxt}</span>`;
+    });
+    return `<span style="color:#7c3aed;font-weight:700">${t}</span> (\n${lines.join(',\n')}\n)`;
+  }).join('\n\n');
+}
+
+function updateExamples() {
+  const sel = document.getElementById('sqlExamples');
+  const tables = Object.keys(state.tables);
+  sel.innerHTML = '<option value="">Esempi rapidi...</option>';
+  if (tables.length) {
+    const t = tables[0], cols = state.tables[t];
+    const ex = [
+      { l: `SELECT * FROM ${t}`, s: `SELECT * FROM "${t}";` },
+      { l: `Conta righe`, s: `SELECT COUNT(*) AS totale FROM "${t}";` },
+    ];
+    if (cols.length > 1) ex.push({ l: `Ordina per ${cols[1].name}`, s: `SELECT * FROM "${t}" ORDER BY "${cols[1].name}";` });
+    state.fks.forEach(fk => ex.push({ l: `JOIN ${fk.fromTable}↔${fk.toTable}`, s: `SELECT * FROM "${fk.fromTable}"\nJOIN "${fk.toTable}" ON "${fk.fromTable}"."${fk.fromCol}" = "${fk.toTable}"."${fk.toCol}";` }));
+    ex.forEach(e => { const o = document.createElement('option'); o.value = e.s; o.textContent = e.l; sel.appendChild(o); });
+  }
+}
+
+function loadExample() {
+  const v = document.getElementById('sqlExamples').value;
+  if (!v) return;
+  document.getElementById('sqlTA').value = v;
+  hlSync();
+  document.getElementById('sqlExamples').value = '';
+}
+
+/* ════════════════════════════════════════
+   STRUTTURA
+═══════════════════════════════════════ */
+function renderStruct() {
+  const div = document.getElementById('structArea'); div.innerHTML = '';
+  const tables = Object.keys(state.tables);
+  if (!tables.length) { div.innerHTML = '<p style="color:#94a3b8;font-size:13px">Nessuna tabella.</p>'; return; }
+  tables.forEach(t => {
+    const cols = state.tables[t];
+    const card = document.createElement('div');
+    card.style.cssText = 'background:#fff;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:1rem;overflow:hidden';
+    const head = document.createElement('div');
+    head.style.cssText = 'background:#1e293b;color:#e2e8f0;padding:6px 12px;font-size:12px;font-weight:600;display:flex';
+    head.innerHTML = `<span>📋 ${t}</span><span style="margin-left:auto;font-size:10px;color:#94a3b8">${cols.length} colonne</span>`;
+    card.appendChild(head);
+
+    const tbl = document.createElement('table');
+    tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:12px';
+    tbl.innerHTML = `<thead><tr style="background:#f8fafc"><th style="padding:5px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:10px;text-align:left">Colonna</th><th style="padding:5px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:10px;text-align:left">Tipo</th><th style="padding:5px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:10px;text-align:left">Vincoli</th><th style="padding:5px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:10px;text-align:left">Relazione</th></tr></thead>`;
+    const tb = tbl.createTBody();
+    cols.forEach((c, i) => {
+      const tr = tb.insertRow(); tr.style.borderBottom = '1px solid #f1f5f9';
+      const fk = state.fks.find(f => f.fromTable === t && f.fromCol === c.name);
+      const v = [];
+      if (i === 0) { v.push('<span class="badge badge-amber">PK</span>'); v.push('<span class="badge badge-amber">AUTO_INCREMENT</span>'); }
+      else if (c.nn) v.push('<span class="badge badge-blue">NOT NULL</span>');
+      if (fk) v.push('<span class="badge badge-green">FK</span>');
+      tr.innerHTML = `<td style="padding:5px 10px">${i === 0 ? '🔑 ' : ''}<strong>${c.name}</strong></td><td style="padding:5px 10px;color:#64748b">${c.type}</td><td style="padding:5px 10px">${v.join(' ') || '—'}</td><td style="padding:5px 10px;color:#0891b2;font-size:11px">${fk ? `→ ${fk.toTable}.${fk.toCol}` : '—'}</td>`;
+    });
+    card.appendChild(tbl);
+
+    const pre = document.createElement('div');
+    pre.style.cssText = 'padding:6px 10px;background:#f8fafc;border-top:1px solid #e2e8f0';
+    const defs = cols.map((c, i) => { if (i === 0) return `  \`${c.name}\` INT NOT NULL AUTO_INCREMENT PRIMARY KEY`; let d = `  \`${c.name}\` ${c.type}`; if (c.nn) d += ' NOT NULL'; if (c.def) d += ` DEFAULT ${c.def}`; return d; }).join(',\n');
+    pre.innerHTML = `<pre style="font-size:10px;color:#475569;font-family:'Courier New',monospace;white-space:pre-wrap">CREATE TABLE \`${t}\` (\n${defs}\n);</pre>`;
+    card.appendChild(pre);
+    div.appendChild(card);
+  });
+}
+
+/* ════════════════════════════════════════
+   ERD
+═══════════════════════════════════════ */
+// ERD positions & drag state
+const erdPos = {};
+let erdDrag = null; // { table, offX, offY }
+
+function initERDPositions() {
+  const tables = Object.keys(state.tables);
+  const CW = 175, CH = 20, HH = 28, PAD = 30;
+  const nc = Math.max(1, Math.ceil(Math.sqrt(tables.length)));
+  tables.forEach((t, i) => {
+    if (!erdPos[t]) {
+      const col = i % nc, row = Math.floor(i / nc);
+      const h = HH + state.tables[t].length * CH + 8;
+      erdPos[t] = { x: PAD + col * (CW + 90), y: PAD + row * 200, w: CW, h };
+    } else {
+      // update height in case columns changed
+      erdPos[t].h = HH + state.tables[t].length * CH + 8;
+      erdPos[t].w = CW;
+    }
+  });
+  // remove deleted tables
+  Object.keys(erdPos).forEach(t => { if (!state.tables[t]) delete erdPos[t]; });
+}
+
+function drawERD() {
+  const canvas = document.getElementById('erdCanvas');
+  const ctx = canvas.getContext('2d');
+  const CW = 175, CH = 20, HH = 28;
+
+  initERDPositions();
+
+  const W = canvas.offsetWidth || 700;
+  const allPos = Object.values(erdPos);
+  const totalH = allPos.length ? Math.max(500, ...allPos.map(p => p.y + p.h + 40)) : 500;
+  const totalW = allPos.length ? Math.max(W, ...allPos.map(p => p.x + p.w + 40)) : W;
+  canvas.width = totalW;
+  canvas.height = totalH;
+  canvas.style.width = '100%';
+
+  ctx.clearRect(0, 0, totalW, totalH);
+  ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, totalW, totalH);
+
+  // grid dots
+  ctx.fillStyle = '#e2e8f0';
+  for (let x = 20; x < totalW; x += 30) for (let y = 20; y < totalH; y += 30) {
+    ctx.beginPath(); ctx.arc(x, y, 1, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // arrows
+  state.fks.forEach(fk => {
+    const f = erdPos[fk.fromTable], t = erdPos[fk.toTable]; if (!f || !t) return;
+    const fc = state.tables[fk.fromTable], tc = state.tables[fk.toTable];
+    const fi = fc.findIndex(c => c.name === fk.fromCol);
+    const ti = tc.findIndex(c => c.name === fk.toCol);
+
+    // pick best side
+    const fCx = f.x + f.w / 2, tCx = t.x + t.w / 2;
+    let fx, tx2, fy, ty;
+    if (fCx < tCx) {
+      fx = f.x + f.w; tx2 = t.x;
+    } else {
+      fx = f.x; tx2 = t.x + t.w;
+    }
+    fy = f.y + HH + (fi + .5) * CH;
+    ty = t.y + HH + (ti + .5) * CH;
+    const mx = (fx + tx2) / 2;
+
+    ctx.beginPath(); ctx.strokeStyle = '#0891b2'; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
+    ctx.moveTo(fx, fy); ctx.bezierCurveTo(mx, fy, mx, ty, tx2, ty); ctx.stroke(); ctx.setLineDash([]);
+
+    // arrowhead
+    const dir = fCx < tCx ? 1 : -1;
+    ctx.beginPath(); ctx.fillStyle = '#0891b2';
+    ctx.moveTo(tx2, ty);
+    ctx.lineTo(tx2 - dir * 9, ty - 4);
+    ctx.lineTo(tx2 - dir * 9, ty + 4);
+    ctx.closePath(); ctx.fill();
+
+    ctx.font = 'bold 11px system-ui'; ctx.fillStyle = '#0891b2';
+    ctx.fillText('N', fx + (dir > 0 ? 4 : -14), fy - 4);
+    ctx.fillText('1', tx2 + (dir > 0 ? -18 : 6), ty - 4);
+  });
+
+  // cards
+  Object.keys(erdPos).forEach(t => {
+    if (!state.tables[t]) return;
+    const p = erdPos[t], cols = state.tables[t];
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.07)';
+    ctx.beginPath(); ctx.roundRect(p.x + 3, p.y + 3, p.w, p.h, 7); ctx.fill();
+    // body
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(p.x, p.y, p.w, p.h, 7); ctx.fill(); ctx.stroke();
+    // header
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath(); ctx.roundRect(p.x, p.y, p.w, HH, [7, 7, 0, 0]); ctx.fill();
+    ctx.font = 'bold 12px system-ui'; ctx.fillStyle = '#e2e8f0';
+    ctx.fillText(t, p.x + 10, p.y + 18);
+    // cols
+    cols.forEach((c, i) => {
+      const cy = p.y + HH + i * CH;
+      const fk = state.fks.find(f => f.fromTable === t && f.fromCol === c.name);
+      if (i % 2 === 1) { ctx.fillStyle = '#f8fafc'; ctx.fillRect(p.x + 1, cy, p.w - 2, CH); }
+      ctx.font = i === 0 ? 'bold 11px system-ui' : '11px system-ui';
+      ctx.fillStyle = fk ? '#0891b2' : i === 0 ? '#92400e' : '#334155';
+      ctx.fillText((i === 0 ? '🔑 ' : fk ? '🔗 ' : '') + c.name, p.x + 8, cy + 14);
+      ctx.font = '10px system-ui'; ctx.fillStyle = '#94a3b8';
+      const tw = ctx.measureText(c.type).width;
+      ctx.fillText(c.type, p.x + p.w - tw - 6, cy + 14);
+    });
+    ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1; ctx.strokeRect(p.x, p.y, p.w, p.h);
+  });
+}
+
+function erdGetRect(t) { return erdPos[t]; }
+
+function erdSetupDrag() {
+  const canvas = document.getElementById('erdCanvas');
+  const HH = 28;
+
+  function getXY(e) {
+    const r = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / r.width;
+    const scaleY = canvas.height / r.height;
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+    return { x: cx * scaleX, y: cy * scaleY };
+  }
+
+  if (canvas._erdDragInit) return; // evita di aggiungere listener doppi
+  canvas._erdDragInit = true;
+
+  canvas.addEventListener('mousedown', e => {
+    const { x, y } = getXY(e);
+    for (const t of Object.keys(erdPos).reverse()) {
+      const p = erdPos[t];
+      if (x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + HH) {
+        erdDrag = { table: t, offX: x - p.x, offY: y - p.y };
+        canvas.style.cursor = 'grabbing';
+        e.preventDefault();
+        return;
+      }
+    }
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    if (!erdDrag) return;
+    e.preventDefault();
+    const { x, y } = getXY(e);
+    erdPos[erdDrag.table].x = Math.max(0, x - erdDrag.offX);
+    erdPos[erdDrag.table].y = Math.max(0, y - erdDrag.offY);
+    drawERD();
+  });
+
+  canvas.addEventListener('mouseup', () => { erdDrag = null; canvas.style.cursor = 'default'; });
+  canvas.addEventListener('mouseleave', () => { erdDrag = null; canvas.style.cursor = 'default'; });
+
+  canvas.addEventListener('touchstart', e => {
+    const { x, y } = getXY(e);
+    for (const t of Object.keys(erdPos).reverse()) {
+      const p = erdPos[t];
+      if (x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + HH) {
+        erdDrag = { table: t, offX: x - p.x, offY: y - p.y };
+        e.preventDefault(); return;
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    if (!erdDrag) return;
+    e.preventDefault();
+    const { x, y } = getXY(e);
+    erdPos[erdDrag.table].x = Math.max(0, x - erdDrag.offX);
+    erdPos[erdDrag.table].y = Math.max(0, y - erdDrag.offY);
+    drawERD();
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', () => { erdDrag = null; });
+}
+
+/* ════════════════════════════════════════
+   TABS
+═══════════════════════════════════════ */
+function switchTab(name) {
+  ['data','sql','erd','struct'].forEach(n => {
+    document.getElementById(`tab-${n}`).style.display = n === name ? 'block' : 'none';
+    document.getElementById(`tab-btn-${n}`).classList.toggle('active', n === name);
+  });
+  if (name === 'erd') { drawERD(); erdSetupDrag(); }
+  if (name === 'struct') renderStruct();
+  if (name === 'sql') { renderSchema(); hlSync(); }
+  if (name === 'data' && currentTable) renderGrid();
+}
+
+/* ════════════════════════════════════════
+   RESET
+═══════════════════════════════════════ */
+function resetAll() {
+  if (!confirm('Sei sicuro? Verranno eliminate TUTTE le tabelle e i dati. Operazione irreversibile.')) return;
+  try {
+    const res = DB.exec("SELECT name FROM sqlite_master WHERE type='table'");
+    if (res.length) res[0].values.forEach(([n]) => { try { DB.run(`DROP TABLE IF EXISTS "${n}"`); } catch(e) {} });
+  } catch(e) {}
+  state = { tables: {}, fks: [] };
+  currentTable = null;
+  localStorage.removeItem(STORE_KEY);
+  document.getElementById('tblList').innerHTML = '';
+  document.getElementById('tblActions').style.display = 'none';
+  document.getElementById('dataArea').style.display = 'none';
+  document.getElementById('noTable').style.display = 'block';
+  document.getElementById('queryResult').innerHTML = '';
+  document.getElementById('sqlTA').value = ''; hlSync();
+  document.getElementById('schemaBox').innerHTML = '';
+  document.getElementById('structArea').innerHTML = '';
+  refreshSidebar();
+}
+
+/* ════════════════════════════════════════
+   IMPORT / EXPORT
+═══════════════════════════════════════ */
+function exportDB() {
+  const b = new Blob([localStorage.getItem(STORE_KEY) || '{}'], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'database.json'; a.click();
+}
+
+function importDB(ev) {
+  const f = ev.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      resetAll();
+      const d = JSON.parse(e.target.result);
+      loadState(d); saveState(); refreshSidebar();
+    } catch(ex) { alert('File non valido'); }
+  };
+  r.readAsText(f); ev.target.value = '';
+}
+
+/* ════════════════════════════════════════
+   MODAL HELPERS
+═══════════════════════════════════════ */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+</script>
+</body>
+</html>
